@@ -1,0 +1,12 @@
+# ignore result files
+/media/*
+
+# coverage data
+.coverage
+/Htmlcov/
+
+# all migrations folders
+*/migrations
+
+# database
+odexdb

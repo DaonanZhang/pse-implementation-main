@@ -1,0 +1,322 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+    <div class="configuration">
+        <a href="/main/">
+            <img border="0" src="/static/img/odex_logo.png" style="position:absolute;top:25px; left:50px; " height=""
+                 width="150"/>
+        </a>
+        <style>
+            body {
+                background-image: url("/static/img/newrun_ohnelogo.png"), url("/static/img/result_background.png");
+                background-size: 100%, cover;
+                background-repeat: no-repeat, no-repeat;
+            }
+        </style>
+        {% if exp.state == "failed" %}
+            <div class="alert alert-danger" role="alert">Error: {{ exp.error }}</div>
+        {% endif %}
+        <h2>Run title: {{ exp.run_name }}</h2>
+        <h4>Detected subspaces: {{ columns|length }}</h4>
+
+
+        <table class="table table-bordered" align="center" border="1" id="table_subspace"
+               data-pagination="true"
+               data-side-pagination="client"
+               data-page-size="10">
+            <tbody>
+
+            {% for column, value in columns.items %}
+                <tr>
+                    <td>{{ column }}</td>
+                    <td>{{ value }}</td>
+                    <td>{{ forloop.counter }}</td>
+                </tr>
+            {% endfor %}
+
+            <br>
+        </table>
+        <br>
+
+
+        <form id="formAdd" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <br>
+            <div class="operation">
+                <fieldset>
+                    <legend>Select Subspaces</legend>
+
+                    {% for radio in form.operation_model_options %}
+                        <label for="{{ radio.id_for_label }}">
+                                                <span class="radio">
+                                                    {{ radio.tag }}
+                                                </span>
+                            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+                            &nbsp
+                            {{ radio.choice_label }}
+                        </label>
+                    {% endfor %}
+                </fieldset>
+                <br>
+
+                <div class="form-group" id="except" style="display: none">
+                    <label> All subspaces, except: </label> <br>
+                    {{ form.operation_except }}
+                    <small>{{ form.operation_except.help_text }}</small>
+                    <br>
+                    <span style="color: red;">{{ form.operation_except.errors.0 }}</span>
+                </div>
+
+                <div class="form-group" id="combo" style="display: none">
+                    <label> Combination: </label> <br>
+                    {{ form.operation_written }}
+                    <small>{{ form.operation_written.help_text }}</small>
+                    <br>
+                    <span style="color: red;">{{ form.operation_written.errors.0 }}</span>
+                </div>
+            </div>
+            <br>
+            <br>
+            <br>
+
+            <fieldset>
+                <legend>If use ground truth file</legend>
+                {% for radio in form.ground_truth_options %}
+                    <label for="{{ radio.id_for_label }}">
+                        <span class="radio">{{ radio.tag }}</span>
+                        &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
+                        &nbsp
+                        {{ radio.choice_label }}
+                    </label>
+                {% endfor %}
+            </fieldset>
+            <br>
+
+
+            <button id="ground_truth_file" style="display: none">
+                <label>{{ form.ground_truth.label }}: </label>
+                {{ form.ground_truth }}
+                <br>
+                <span style="color: red;">{{ field.errors.0 }}</span>
+            </button>
+            <br>
+            <br>
+            <br>
+
+
+            <fieldset>
+                <legend>Run again with additional data:&nbsp&nbsp
+                    <input type="checkbox" onclick="showAdd(this)"></legend>
+
+                <button id="addtional" style="display: none">
+                    <label>{{ form.generated_file.label }}: </label>
+                    {{ form.generated_file }}
+                    <br>
+                    <span style="color: red;">{{ field.errors.0 }}</span>
+                </button>
+                <br>
+            </fieldset>
+            <br>
+            <br>
+            <br>
+
+
+            <fieldset>
+            <legend> Select Outlier Detection Method and input parameters:
+                <select name="odms" id="odms" onchange="displaySelected(this)">
+                    {% for key in odms %}
+                        <option value="{{ forloop.counter }}" {% if forloop.first %}selected{% endif %}>{{ key }}</option>
+                    {% endfor %}
+                </select>
+            </legend>
+            </fieldset>
+
+
+            {% for key, para in odms.items %}
+                <div id="odm{{ forloop.counter }}"
+                     {% if forloop.first %}style="display: block"
+                     {% else %}style="display: none"
+                     {% endif %}>
+                <span style="color: red;">{{ form.non_field_errors.0 }}</span>
+                    <table class="table table-bordered" align="center" border="1" id="table_page{{ forloop.counter }}"
+                           data-pagination="true"
+                           data-side-pagination="client"
+                           data-page-size="3">
+
+                        <tbody id="parameters">
+                        <div>
+                            {% for name, default in para.items %}
+                                <tr>
+                                    <td>{{ name }} </td>
+                                    <td>
+                                        <input type="text" placeholder="{{ default }}" name="{{ key }}_{{ name }}">
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </div>
+                        </tbody>
+                    </table>
+                </div>
+            {% endfor %}
+
+            <div>
+                <input id="btnSave" type="image"
+                       src="/static/img/button/add.png" width="200" align="absbottom" value="Add run to queue">
+                <a href="/main/">
+                    <img src="/static/img/button/cancel.png">
+                </a>
+            </div>
+        </form>
+
+    </div>
+
+
+{% endblock %}
+
+{% block js %}
+
+
+
+
+    <script>
+        $(document).ready(function () {
+            $('#table_subspace').bootstrapTable({
+                columns: [
+                    {
+                        field: 'Subspaces on *.csv',
+                        title: "Subspaces on *.csv"
+                    }, {
+                        field: 'Value in the first row',
+                        title: "Value in the first row"
+                    }, {
+                        field: "Indexing",
+                        title: "Indexing"
+                    },]
+            })
+        })
+
+
+        $(document).ready(function () {
+            {% for key, para in odms.items %}
+                $('#table_page{{ forloop.counter }}').bootstrapTable({
+                    columns: [
+                        {
+                            field: 'parameters',
+                            title: "parameters"
+                        }, {
+                            field: "value",
+                            title: "value"
+                        },]
+                })
+            {% endfor %}
+        })
+
+        function showSubspace() {
+            var operation_model1 = $("#operation_model_1:checked").val()
+            var operation_model2 = $("#operation_model_2:checked").val()
+
+            if (operation_model1 === "2") {
+                var exc = document.getElementById("except")
+                exc.style.display = 'block'
+
+            } else if (operation_model2 === "3") {
+                var combo = document.getElementById("combo")
+                combo.style.display = 'block'
+            }
+
+
+        }
+
+        window.onload = showSubspace;
+
+        $('#operation_model_0').change(function () {
+            var select = $(this);
+            var exc = $('#except');
+            var combo = $('#combo');
+            exc.hide();
+            combo.hide();
+        });
+
+        $('#operation_model_1').change(function () {
+            var select = $(this);
+            var exc = $('#except');
+            var combo = $('#combo');
+            exc.show();
+            combo.hide();
+        });
+
+        $('#operation_model_2').change(function () {
+            var select = $(this);
+            var exc = $('#except');
+            var combo = $('#combo');
+            exc.hide();
+            combo.show();
+        });
+
+        $('#ground_truth_0').click(function () {
+            var select = $(this);
+            var gt = $('#ground_truth_file');
+            gt.hide();
+        });
+
+        $('#ground_truth_1').click(function () {
+            var select = $(this);
+            var gt = $('#ground_truth_file');
+            gt.show();
+        });
+
+        function showGT() {
+            var up = document.getElementById("ground_truth_file")
+            up.style.display = 'block';
+        }
+
+        function hideGT() {
+            var up = document.getElementById("ground_truth_file")
+            up.style.display = 'none';
+        }
+
+        function showAdd(obj) {
+            var up = document.getElementById("addtional")
+            if (obj.checked === true) {
+                up.style.display = 'block';
+            } else up.style.display = 'none'
+
+        }
+
+
+        function displaySelected() {
+            var opt = $("#odms").val();
+            document.getElementById("odm" + 1).style.display = 'none'
+            document.getElementById("odm" + 2).style.display = 'none'
+            document.getElementById("odm" + 3).style.display = 'none'
+            document.getElementById("odm" + 4).style.display = 'none'
+            document.getElementById("odm" + 5).style.display = 'none'
+            document.getElementById("odm" + 6).style.display = 'none'
+            document.getElementById("odm" + 7).style.display = 'none'
+            document.getElementById("odm" + 8).style.display = 'none'
+            document.getElementById("odm" + 9).style.display = 'none'
+            document.getElementById("odm" + 10).style.display = 'none'
+            document.getElementById("odm" + 11).style.display = 'none'
+            document.getElementById("odm" + 12).style.display = 'none'
+            document.getElementById("odm" + 13).style.display = 'none'
+            document.getElementById("odm" + 14).style.display = 'none'
+            document.getElementById("odm" + 15).style.display = 'none'
+            document.getElementById("odm" + 16).style.display = 'none'
+            document.getElementById("odm" + 17).style.display = 'none'
+            document.getElementById("odm" + 18).style.display = 'none'
+            document.getElementById("odm" + 19).style.display = 'none'
+            document.getElementById("odm" + 20).style.display = 'none'
+            document.getElementById("odm" + 21).style.display = 'none'
+            document.getElementById("odm" + 22).style.display = 'none'
+            document.getElementById("odm" + 23).style.display = 'none'
+            document.getElementById("odm" + 24).style.display = 'none'
+
+
+            document.getElementById("odm" + opt).style.display = 'block'
+
+        }
+    </script>
+
+{% endblock %}

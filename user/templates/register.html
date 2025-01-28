@@ -1,0 +1,122 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="{% static 'plugins/bootstrap-3.4.1/css/bootstrap.min.css' %}">
+    <style>
+        .account {
+            width: 450px;
+            border-radius: 5px;
+
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 70px;
+            padding: 20px 40px;
+        }
+
+        .account h2 {
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="account">
+    <style>
+        body {
+            background-image: url("/static/img/login_logo.png"), url("/static/img/login_background.png");
+            background-size: 100%, cover;
+            background-repeat: no-repeat, no-repeat;
+        }
+    </style>
+    <form method="post" novalidate autocomplete="off">
+        {% csrf_token %}
+        <div class="form-group" id="username_form">
+            <label class="control-label">Username</label>
+            {{ form.username }}
+            <small>{{ form.username.help_text }}</small>
+            <span id="notice"></span>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            {{ form.password }}
+            <small>{{ form.password.help_text }}</small>
+            <div style="color: red;">{{ form.password.errors.0 }}</div>
+        </div>
+        <div class="form-group">
+            <label>Repeat Password</label>
+            {{ form.repeat_password }}
+            <small>{{ form.repeat_password.help_text }}</small>
+            <div style="color: red;">{{ form.repeat_password.errors.0 }}{{ form.non_field_errors.0 }}</div>
+        </div>
+        <div class="form-group">
+            <label>Security Question</label>
+            <select class="form-control" id="id_question" name="question">
+                <option selected="">Select your security question</option>
+                {% for obj in form.question.field.queryset %}
+                    <option value={{ obj.id }}>{{ obj.question }}</option>
+                {% endfor %}
+            </select>
+            <small>{{ form.question.help_text }}</small>
+            <div style="color: red;">{{ form.question.errors.0 }}</div>
+        </div>
+        <div class="form-group">
+            <label>Security answer</label>
+            {{ form.answer }}
+            <small>{{ form.answer.help_text }}</small>
+            <div style="color: red;">{{ form.answer.errors.0 }}</div>
+        </div>
+        <div class="form-group">
+            <label>TAN</label>
+            {{ form.tan }}
+            <small>{{ form.tan.help_text }}</small>
+            <div style="color: red;">{{ form.tan.errors.0 }}</div>
+        </div>
+
+        <div>
+            <input id="create" type="image"
+                   src="/static/img/button/create_account.png" width="120" align="top">
+            <a href="/login/">
+                <img src="/static/img/button/cancel.png" width="80">
+            </a>
+        </div>
+
+
+    </form>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#id_username').on('change', function () {
+                const username = $(this).val();
+                $.ajax({
+                    url: "{% url 'check_username' %}",
+                    data: {
+                        'username': username
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.flag) {
+                            $('#notice').html("<span class='help-block'>Username already exists</span>");
+                            $(function () {
+                                $('#username_form').last().addClass("has-error");
+                            });
+                            $("#create").attr("disabled", "disabled");
+                        } else {
+                            $('#notice').html('');
+                            $(function () {
+                                $('#username_form').removeClass("has-error has-feedback");
+                            });
+                            $("#create").removeAttr("disabled");
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+
+</div>
+
+</body>
+</html>

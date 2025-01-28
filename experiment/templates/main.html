@@ -1,0 +1,287 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+    <div class="container">
+        <div>
+            <img src="/static/img/main_logo.png" style="width:100%;">
+        </div>
+
+        <style>
+            body {
+                background-image: url("/static/img/main_background.png");
+                background-size: 100%;
+                background-repeat: no-repeat;
+            }
+        </style>
+
+        <!-- Experiments List -->
+            <!-- Table -->
+            <div class="toolbar">
+                <input id="btnAdd" type="image" src="/static/img/button/newrun2.png" width="100">
+            </div>
+            <table class="table table-bordered"
+                   id="record_table"
+                   data-url="/explist/"
+                   data-method='post'
+                   data-toolbar=".toolbar"
+                   data-auto-refresh="true"
+                   data-search="true"
+                   data-show-toggle="true"
+                   data-show-columns="true"
+                   data-show-columns-toggle-all="true"
+                   data-pagination="true"
+                   data-side-pagination="client"
+                   data-auto-refresh-interval="2">
+            </table>
+        </div>
+
+
+
+    <!-- new run -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">New Run</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="formAdd" enctype="multipart/form-data">
+                        <div class="clearfix">
+                            <div class="col-xs-6">
+                                <div class="form-group" style="position: relative;margin-bottom: 25px;">
+                                    <label>Run Name</label>
+                                    {{ form.run_name }}
+                                    <small>{{ form.run_name.help_text }}</small>
+                                    <div id="run_name" style="color: red;">{{ form.run_name.errors.0 }}</div>
+                                    <div class="form-group" style="position: relative;margin-bottom: 25px;">
+                                        <label>Run Name</label>
+                                        {{ form.main_file }}
+                                        <small>{{ form.main_file.help_text }}</small>
+                                        <div id="main_file" style="color: red;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button id="btnSave" type="button" class="btn btn-primary">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- delete -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="alert alert-danger alert-dismissible fade in" role="alert">
+                <h4>Are you sure to delete?</h4>
+                <p style="text-align: right;">
+                    <input type="image" src="/static/img/button/delete.png" id="btnConfirmDelete" width="65" onclick="bindBtnConfirmDeleteEvent()">
+                    <input type="image" src="/static/img/button/cancel.png" data-dismiss="modal" width="75" align="top">
+                </p>
+            </div>
+        </div>
+
+
+{% endblock %}
+
+
+{% block js %}
+
+    <script>
+        $(document).ready(function () {
+            $('#record_table').bootstrapTable({
+                columns: [{
+                    field: "id",
+                    title: "ID",
+                    sortable: true
+                }, {
+                    field: "run_name",
+                    title: "Run name",
+                    sortable: true
+                }, {
+                    field: 'created_time',
+                    title: "Created Time",
+                    sortable: true
+                }, {
+                    field: "state",
+                    title: "State",
+                    sortable: true,
+                    formatter: function (value) {
+                        let color = "";
+                        if (value === "failed") {
+                            color = '<span style="color:red">' + value + '</span>'
+                            return color;
+                        } else if(value === 'pending'){
+                            color = '<span style="color:orange">' + value + '</span>'
+                            return color;
+                        }
+                        color = '<span>' + value + '</span>'
+                        return color;
+                    }
+                }, {
+                    field: "odm",
+                    title: "ODM",
+                    sortable: true
+                }, {
+                    field: "file_name",
+                    title: "Database file",
+                    sortable: true
+                }, {
+                    field: "operation",
+                    title: "Subspaces",
+                    sortable: true
+                }, {
+                    field: "start_time",
+                    title: "Start time",
+                    sortable: true
+                }, {
+                    field: "duration",
+                    title: "Duration",
+                    sortable: true
+                }, {
+                    title: "Options",
+                    events: operateEvents,
+                    formatter: function (value, row, index) {
+                        const actions = [];
+                        actions.push('<input id="delete" class=" btn-delete" type="image" src="/static/img/button/delete.png" width="50" value="Delete">')
+                        if (row.state === "finished" || row.state === "pending") {
+                            actions.push('<a href="/result/?id=' + row.id + '"> <input id="detail" class="btn-details" type="image" src="/static/img/button/show%20details.png" width="90" value="Show Details"> </a>')
+                        } else {
+                            actions.push('<a href="/configuration/?id=' + row.id + '"> <input id="edit" class="btn-edit" type="image"src="/static/img/button/edit.png" width="75"value="Edit again"> </a>')
+                        }
+                        return actions.join("");
+                    }
+                }]
+            });
+        })
+
+        $(function() {
+            $('#record_table').bootstrapTable()
+    	        .on('refresh.bs.table', function () {
+      	            console.timeEnd()
+				    console.time()
+                })
+        });
+
+        window.operateEvents = {
+            'click #delete': function (e, value, row, index) {
+                // Show delete dialog
+                window.DELETE_ID = row.id;
+                $("#deleteModal").modal('show');
+            },
+        }
+
+
+        $(function () {
+            bindBtnAddEvent();
+            bindBtnSaveEvent();
+            bindBtnConfirmDeleteEvent();
+            {#bindBtnDetailsEvent();#}
+            {#bindBtnEditEvent();#}
+        })
+
+        function bindBtnAddEvent() {
+            $("#btnAdd").click(function () {
+                $('#myModal').modal('show');
+            });
+        }
+
+        function bindBtnSaveEvent() {
+            $("#btnSave").click(function () {
+                // clear error message
+                $(".error-msg").empty();
+
+                $.ajax({
+                    url: "/main/",//  -> /order/edit/?uid=12
+                    type: "post",
+                    data: new FormData($("#formAdd")[0]),//Get the data filled in by the user in the form
+                    processData: false,
+                    contentType: false,
+                    dataType: "JSON",
+                    success: function (res) {
+                        if (res.status) {
+                            //location.reload()
+                            window.location.href = "/configuration/?id=" + res.id;
+                        } else {
+                            // Display error messages in a dialog.
+                            $.each(res.error, function (name, errorList) {
+                                {#$("#id_" + name).next().text(errorList[0]);#}
+                                $("#"+name).text(errorList[0]);
+                            })
+                        }
+                    }
+                })
+            });
+        }
+
+        function bindBtnConfirmDeleteEvent() {
+            $("#btnConfirmDelete").click(function () {
+                $.ajax({
+                    url: "/delete/",  //    => /order/delete/?uid=123
+                    type: "GET",
+                    data: {
+                        id: DELETE_ID
+                    },
+                    dataType: "JSON",
+                    success: function (res) {
+                        if (res.status) {
+                            location.reload();
+                        } else {
+                            alert(res.error);
+                        }
+                    }
+                })
+            });
+        }
+
+        {#function bindBtnDetailsEvent() {#}
+        {#    $(".btn-details").click(function () {#}
+        {#        Details_ID = $(this).attr("id");#}
+        {#        $.ajax({#}
+        {#            url: "/result/",  //    => /order/delete/?uid=123#}
+        {#            type: "GET",#}
+        {#            data: {#}
+        {#                id: Details_ID#}
+        {#            },#}
+        {#            dataType: "JSON",#}
+        {#            success: function (res) {#}
+        {#                if (res.status) {#}
+        {#                    window.location.href = "/result/?id=" + res.id;#}
+        {#                } else {#}
+        {#                    alert(res.error);#}
+        {#                }#}
+        {#            }#}
+        {#        })#}
+        {#    });#}
+        {##}
+
+        {#function bindBtnEditEvent() {#}
+        {#    $(".btn-edit").click(function () {#}
+        {#        Edit_ID = $(this).attr("id");#}
+        {#        $.ajax({#}
+        {#            url: "/configuration/",  //    => /order/delete/?uid=123#}
+        {#            type: "GET",#}
+        {#            data: {#}
+        {#                id: Edit_ID#}
+        {#            },#}
+        {#            dataType: "JSON",#}
+        {#            success: function (res) {#}
+        {#                if (res.status) {#}
+        {#                    window.location.href = "/configuration/?id=" + res.id;#}
+        {#                } else {#}
+        {#                    alert(res.error);#}
+        {#                }#}
+        {#            }#}
+        {#        })#}
+        {#    });#}
+        {##}
+    </script>
+{% endblock %}
+
+

@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="{% static 'plugins/bootstrap-3.4.1/css/bootstrap.min.css' %}">
+    <style>
+        .account {
+            width: 450px;
+            border-radius: 5px;
+
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 150px;
+            padding: 20px 40px;
+        }
+
+        .account h2 {
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="account">
+    <style>
+        body {
+            background-image: url("/static/img/login_logo.png"), url("/static/img/login_background.png");
+            background-size: 95%, cover;
+            background-repeat: no-repeat, no-repeat;
+        }
+    </style>
+    <h2>Enter your new name</h2>
+    <form method="post" novalidate autocomplete="off">
+        {% csrf_token %}
+        <div class="form-group" id="username_form">
+            <label class="control-label">Username</label>
+            {{ form.username }}
+            <small>{{ form.username.help_text }}</small>
+            <span id="notice"></span>
+        </div>
+
+        <div>
+            <input type="image" src="/static/img/button/change_name.png"  width="105" align="top"  id="create" value="Change Name">
+
+            <a href="/main/">
+                <img src="/static/img/button/cancel.png" width="80">
+            </a>
+        </div>
+
+    </form>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#id_username').on('change', function () {
+                const username = $(this).val();
+                $.ajax({
+                    url: "{% url 'check_username' %}",
+                    data: {
+                        'username': username
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.flag) {
+                            $('#notice').html("<span class='help-block'>Username already exists</span>");
+                            $(function () {
+                                $('#username_form').last().addClass("has-error");
+                            });
+                            $("#create").attr("disabled", "disabled");
+                        } else {
+                            $('#notice').html('');
+                            $(function () {
+                                $('#username_form').removeClass("has-error has-feedback");
+                            });
+                            $("#create").removeAttr("disabled");
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+
+</div>
+
+</body>
+</html>
